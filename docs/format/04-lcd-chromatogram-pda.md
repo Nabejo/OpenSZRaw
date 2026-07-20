@@ -122,6 +122,26 @@ is a scannable summary, not a substitute for the detailed sections below
   quiet region, no length-prefix-looking field, zero bytes scattered
   not clustered - direct, by-eye confirmation of the already-established
   "hard, instantaneous cliff" aggregate-statistics finding.
+- **The split form's 4-byte header/footer overhead has two previously-
+  unexamined fields (named H2/F2 this session), and both carry real,
+  shuffle-verified temporal structure, but no identified numeric
+  meaning.** H2 (header bytes `[2:4]`) is a hard corpus-wide constant
+  `0` on every one of 31 `PXD025121` (IT-TOF) split-form files, but real,
+  highly variable content on every one of 11 QTOF split-form files (10
+  `MTBLS14820` plus `MSV000084197`) - a second instrument-family-
+  conditional structural fact nested inside the split form, not
+  previously recorded. F2 (footer bytes `[len-4:len-2]`) is
+  content-dependent in every split-form file regardless of family.
+  Both fields show lag-1 autocorrelation `0.32`-`0.90` that collapses to
+  within `+/-0.03` of zero under a segment-order-shuffle control on
+  every one of 6 independent files checked - the cleanest
+  autocorrelation-vs-shuffle gap this document has produced - but no
+  candidate formula (neighbor-segment fields, region byte
+  sums/XOR/first-or-last-`u16`, cross-field correlation, a
+  modulo-65536-unwrap linear fit) reproduces either field, and H2's
+  values wander across nearly the full `u16` range repeatedly within a
+  single run, atypical of a directly-plotted physical trace. See
+  2026-07-20 session 8.
 
 **Ruled out** (see "This session's additional ruled-out hypotheses" and
 "further ruled-out hypotheses" for full detail): standard unsigned
@@ -178,7 +198,19 @@ one outlier that a shuffled-byte control and cross-file check both
 disqualified as search-space noise; and zlib/DEFLATE framing for the
 whole payload or body, ruled out via a randomized control after an
 initial small hit rate turned out statistically indistinguishable from
-both a random-byte and a shuffled-byte control (see 2026-07-20 session 7).
+both a random-byte and a shuffled-byte control (see 2026-07-20 session 7);
+the two MS-Numpress sub-schemes not directly tested in session 7 - Pic
+shares Lin's already-tested nibble `encodeInt` framing exactly (differing
+only in the pre-encoding value transform, not token boundaries), and
+Slof's fixed-16-bit-per-value width was checked at the split form's
+region granularity (`a_len == 512` for region `A`, `tail_len == 2 *
+(npts - 256)` for region `tail`) rather than only the whole-body length
+the existing fp16 check already used, finding the same negligible
+(0.08%-0.54%) coincidental-crossing rate (see 2026-07-20 session 8);
+and every exact-match formula tried against the split form's two
+newly-identified H2/F2 envelope fields (neighbor-segment length fields,
+region byte sums/XOR/boundary values, cross-field lag correlation, a
+modulo-65536 unwrap-and-linear-fit) - see 2026-07-20 session 8.
 
 **Genuinely open:**
 - The exact per-value token grammar (width-selection rule and numeric
@@ -194,6 +226,11 @@ both a random-byte and a shuffled-byte control (see 2026-07-20 session 7).
 - `CheckSum` offsets 48 and 80 (confirmed content-dependent, not
   identified as any standard CRC/checksum algorithm nor as a plain
   count/derived size - see 2026-07-20 sessions 1 and 2).
+- The split form's H2/F2 envelope fields: confirmed real,
+  content-dependent, and shuffle-verified-temporal, with H2 additionally
+  confirmed as a hard instrument-family-conditional constant/non-constant
+  split, but no formula or numeric identity found for either. See
+  2026-07-20 session 8.
 - Whether fp16 (binary16) numeric interpretation or spectral-domain
   (wavelength-to-wavelength) delta coding is the right *value*
   interpretation for a token, once a token-boundary rule is found -
@@ -2459,6 +2496,170 @@ The zlib/DEFLATE check was ad hoc (`python3 -c`/heredoc, not saved as a
 standalone script, since it needed no reusable abstraction beyond the
 standard library's own `zlib` module).
 
+## 2026-07-20 session 8: two previously-unremarked fields inside the split-form envelope overhead (H2/F2) - real, shuffle-verified per-timepoint structure found, but no numeric identity or decode
+
+Prompted by a re-read of the "closer look at split vs. symmetric" and
+"cross-file alignment" suggestions rather than sweeping more parameters
+of an already-tried framing: the "Confirmed payload envelope" section
+above states the split form's 4-byte header is "`A` plus 2 more bytes"
+and its 4-byte footer is "2 more bytes plus `tail`", but no prior
+session ever looked at what those 2+2 extra bytes actually contain -
+every session since simply treated them as opaque wrapper padding
+alongside the two length fields. This session names and inspects them
+for the first time: **H2** is payload bytes `[2:4]` (the header's second
+`u16`, right after the region-`A` length field), and **F2** is payload
+bytes `[len-4:len-2]` (the footer's first `u16`, right before the
+region-`tail` length field). Neither falls inside the byte ranges the
+`A`/`tail` length fields account for (`region_a` + `region_tail` exactly
+equals `a_len + tail_len` bytes with zero exceptions, as already
+established), so these are genuinely separate scalar fields, not
+mis-scoped data channels.
+
+- **H2 is a hard, corpus-wide, instrument-family-conditional split: zero
+  on every IT-TOF-family split-form file, real content on every
+  QTOF-family split-form file.** Checked across all 31 `PXD025121`
+  (IT-TOF) split-form files and all 11 QTOF split-form files (10
+  `MTBLS14820` plus `MSV000084197/20190607_NM16.lcd`, both LCMS-9030
+  QTOF sources): **H2 is the constant `0` across every one of 31
+  `PXD025121` files' full segment counts (6189-6190 segments each,
+  including real/non-flat segments - this is not merely "H2 is 0 during
+  the already-known-zero flat baseline," since real-mode segments in
+  these files carry genuine nonzero `region_a`/`region_tail` content
+  while H2 itself stays 0 throughout)**, while every one of the 11 QTOF
+  files shows hundreds to over a thousand distinct H2 values
+  (`20190607_NM16.lcd`: 1137 distinct values across 3502 segments;
+  `MTBLS14820` files: 553-636 distinct values across 1220 segments
+  each). This is a genuine, reproducible, corpus-wide structural
+  difference between the two split-form-using instrument families that
+  no prior session recorded - previously the split/symmetric envelope
+  distinction was the only known instrument-correlated structural fact
+  (see the "Confirmed payload envelope" section); this adds a second,
+  finer-grained one nested inside the split form itself. (Caveat: the
+  local corpus's two split-form sources are exactly one IT-TOF study and
+  two QTOF studies, so "instrument family" and "study/dataset" remain
+  confounded here the same way split-vs-symmetric's envelope form and
+  wavelength count were confounded before session 3 resolved that one -
+  this is reported as a corpus-wide correlation, not an independently
+  proven instrument-level cause.)
+- **F2 is real, non-zero, content-dependent in every split-form file
+  checked, both instrument families alike.** Unlike H2, F2 never
+  collapses to a constant anywhere in the corpus - every `PXD025121` and
+  every QTOF file shows hundreds to 1000+ distinct values.
+- **Both fields carry genuine temporal structure that a shuffle-order
+  control kills, not partial or metric-artifact structure - the
+  strongest, cleanest positive control this document has produced.**
+  Measuring lag-1 autocorrelation and mean-relative-step smoothness (the
+  same smoothness metric this document's session 4/6 already validated,
+  now applied directly to H2/F2 as raw scalar series rather than to a
+  decoded channel) on 6 independent files (`20190607_NM16.lcd`, 3
+  `MTBLS14820` files, `PXD025121/1.lcd`/`10.lcd`/`11.lcd`) and comparing
+  each against a same-multiset segment-order-shuffled control:
+
+  | file | field | autocorr1 (real) | autocorr1 (shuffled) | mode frac | distinct frac |
+  |---|---|---|---|---|---|
+  | `20190607_NM16.lcd` | H2 | 0.854 | -0.013 | 0.011 | 0.325 |
+  | `20190607_NM16.lcd` | F2 | 0.324 | 0.005 | 0.013 | 0.319 |
+  | `MTBLS14820/..._0hpi_S16.lcd` | H2 | 0.712 | -0.015 | 0.027 | 0.453 |
+  | `MTBLS14820/..._24hpi_S25.lcd` | F2 | 0.895 | -0.006 | 0.011 | 0.230 |
+  | `PXD025121/1.lcd` | F2 | 0.608 | 0.008 | 0.014 | 0.235 |
+  | `PXD025121/10.lcd` | F2 | 0.558 | 0.004 | 0.019 | 0.229 |
+
+  Every real autocorrelation is `0.32`-`0.90`; every shuffled control
+  collapses to within `+/-0.03` of zero, and mean-relative-step roughly
+  doubles to triples under shuffling in every case. Mode fraction stays
+  low (1-3%) and distinct-value fraction stays moderate-to-high
+  (21-48%) throughout, so - per this document's own session 4/6
+  methodological corrections - this is not a mode-collapsed or
+  low-diversity metric artifact of the kind that previously produced
+  false positives elsewhere in this investigation. This is a materially
+  cleaner result than session 3's region-`tail` marker-bit finding
+  (shuffled control `0.2%` against a `70.9%` real rate, already this
+  document's best prior positive control) in the sense that it did not
+  need a bespoke acceptance criterion to show the gap - a plain,
+  standard autocorrelation coefficient falls to noise level under
+  shuffling, on every file tried, both instrument families.
+- **No candidate formula reproduces either field exactly, and value
+  magnitude is not obviously a plausible physical chromatogram either.**
+  Tested and ruled out (exact-match sweep across 3-6 files each):
+  neighbor-segment `a_len`/`tail_len`/`blocksz`/payload-length at lags
+  -2..+2 (best hit rate 0.13%, i.e. noise); `region_a`/`region_tail`
+  byte-level sum/XOR/16-bit-pairwise-sum/first-`u16`/last-`u16` (best
+  hit rate 0.11%); Pearson correlation (not exact match) against
+  `region_a`/`region_tail` byte-sum and byte-max (all `|r| < 0.4`,
+  `20190607_NM16.lcd`'s best case `f2` vs `region_a` sum at `r=0.293`);
+  H2 against F2 directly, same file, any lag (best 0.13%). A
+  modulo-65536 "unwrap and linear-fit against segment index" test (on
+  the theory that a wandering-but-autocorrelated field bounded to 16
+  bits might be a wrapping monotonic counter, e.g. an elapsed-time or
+  cumulative-byte-offset tick count) gave inconsistent, mostly-poor fits
+  across files (`R^2` `0.07`-`0.87`, no stable pattern) - not solid
+  enough to report as a finding, only as a ruled-out shortcut. Eyeballing
+  the raw sequences: `H2` in `20190607_NM16.lcd` wanders across nearly
+  the entire `0`-`65535` range multiple times within a single run
+  (argmax `65374` at segment 1767, out of 3502 total), which is not what
+  a bounded physical absorbance/intensity trace looks like (a real UV
+  chromatogram is mostly near baseline with a handful of elevated
+  peaks, not constantly re-traversing the full dynamic range) - more
+  consistent with some kind of accumulator or partial-state counter than
+  a directly-plotted physical value, though no concrete candidate for
+  *what* it accumulates was found to match.
+- **Verdict: this is real, newly-documented structure - a second
+  instrument-family-conditional field nested inside the split-form
+  envelope, with the cleanest autocorrelation-vs-shuffle gap this
+  document has produced - but it is a structural finding about the
+  envelope, not a decode of the per-value payload grammar itself.** H2/F2
+  sit entirely outside the region-`A`/region-`tail` byte ranges that
+  still contain the undecoded per-wavelength values, so even a full
+  identification of H2/F2's semantics would not, by itself, crack the
+  core open problem (the width-selection rule for values inside
+  `region_a`/`region_tail`). It is reported here as a genuine,
+  corpus-verified addition to this document's structural map of the
+  format, and as a concrete, well-scoped lead for a future session (see
+  "Further avenues" below).
+- **Also this session, prompted directly by the task's suggestion to
+  check whether MS-Numpress's other sub-schemes (beyond the nibble
+  varint framing session 7 already tested) are new ground: they are
+  not, on inspection of the actual published algorithm.** MS-Numpress
+  has three named codecs - Lin, Pic, and Slof - but Lin and Pic both use
+  the *same* nibble-granular bit-packing (`encodeInt`) for their
+  residuals, differing only in what value gets encoded (double-delta
+  residual for Lin, rounded absolute value for Pic) - a difference in
+  *value transform*, not *token framing*. Session 7's two nibble-varint
+  variants (generic per-nibble continuation flag, and the
+  length-prefixed scheme matching Numpress's actual `encodeInt` layout)
+  already tested this shared framing exhaustively and ruled it out, so
+  Pic is not new search space, only a relabeling of Lin's already-tested
+  byte/nibble layout with a different upstream transform - consistent
+  with this document's existing "value transform vs. framing" distinction
+  already applied to fp16 and spectral-domain delta. Slof is different -
+  a genuinely separate, *fixed*-width scheme (each value stored as one
+  16-bit unsigned short after a log-fixed-point transform, not nibble
+  varints at all) - but this document's existing fp16 fixed-width check
+  (body length essentially never equals `2 * npts`) already rules out
+  any fixed-2-bytes-per-value scheme at the whole-body level, and this
+  session extended that specific check to the **region level** for the
+  split form (checking `a_len == 512` for region `A`'s 256 channels and
+  `tail_len == 2 * (npts - 256)` for region `tail`, rather than only the
+  combined-body length): **`a_len == 512` in 5/6187 (0.08%) of
+  `PXD025121/1.lcd`'s real-mode segments and 19/3498 (0.54%) of
+  `20190607_NM16.lcd`'s; `tail_len == 2 * (npts - 256)` in 0/6187 and
+  3/3498 respectively** - the same negligible, coincidental-crossing
+  rate the original whole-body fp16 check found, confirming Slof's fixed
+  width does not fit at region granularity either. Both Numpress
+  sub-schemes beyond the one session 7 already tested are therefore
+  closed off, not left open as the task description's phrasing might
+  have suggested before this check was actually run.
+
+Scripts (new this session, under `re/src/analysis/`, gitignored):
+`h2f2.py` (`h2f2_rows`/`corpus_scan` helpers, built on `common.py`'s
+`iter_segments`/`envelope_form` rather than re-deriving them) and
+`run_h2f2_survey.py` (driver reproducing the corpus scan and the
+smoothness/shuffle-control table above). The neighbor/correlation/
+unwrap-linear-fit checks and the Slof region-length check were ad hoc
+(disposable scripts in this session's own scratch directory, not saved,
+since each was a single bounded query with no reusable abstraction
+needed beyond `h2f2.py`'s row extraction).
+
 ## LC Raw Data - a different, unrelated chromatogram stream
 
 While looking for real `LSS Raw Data` chromatogram content (all empty in
@@ -2680,6 +2881,16 @@ leads, not findings:
   "validator, not framing strategy" caveat already noted above for
   fp16 and spectral-domain delta, since neither transform changes which
   bytes form a token, only how a found token's bytes become a number.
+  **(Update, 2026-07-20 session 8)** Numpress's third sub-scheme, Pic,
+  turned out not to be new ground either - it shares Lin's exact
+  nibble-`encodeInt` framing, already ruled out above, differing only in
+  the (irrelevant-to-framing) value transform. Slof's *framing* (fixed
+  16-bit width per value) is also now ruled out at the split form's
+  region granularity, not just the whole-body granularity the original
+  fp16 check used - see 2026-07-20 session 8. Only the *value*-transform
+  reading of Slof (as a validator, once a token-boundary rule exists)
+  remains open, same as Lin/Pic's delta and fp16's numeric
+  interpretation above.
 - **(New, from 2026-07-20 session 7) Manual, by-hand nibble-level
   inspection of region `tail`'s channel-2-onward bytes was not attempted
   this session.** Session 7's nibble-granular sweeps were parameterized
@@ -2689,3 +2900,29 @@ leads, not findings:
   that bullet above) has not yet been tried at nibble granularity either,
   and remains a genuinely untried combination of "manual" and
   "nibble-aware" that no session, including this one, has done.
+- **(New, from 2026-07-20 session 8) Identify what H2 and F2 actually
+  encode.** Session 8 found and named two previously-unexamined u16
+  fields in the split form's header/footer overhead (H2 at payload
+  bytes `[2:4]`, F2 at `[len-4:len-2]`) with real, shuffle-verified
+  temporal structure (autocorrelation `0.32`-`0.90` collapsing to noise
+  under a segment-order shuffle, on 6 independent files) and, for H2, a
+  hard corpus-wide instrument-family split (constant `0` on all 31
+  `PXD025121`/IT-TOF files, real content on all 11 QTOF files) - but no
+  exact-match formula against neighbor segments, region byte statistics,
+  or each other. Not yet tried: (a) a broader checksum/CRC sweep
+  specifically against these two fields, reusing the 19-polynomial
+  infrastructure already built for the `CheckSum` stream's offsets
+  48/80, now pointed at `region_a`/`region_tail`/whole-payload bytes
+  instead of a whole-stream range; (b) checking whether H2 (QTOF-only)
+  correlates with a QTOF-specific acquisition parameter recorded
+  elsewhere in the file (e.g. a method/gain setting stream), given its
+  instrument-conditional presence; (c) since H2 sits right after the
+  region-`A` length field and F2 sits right before the region-`tail`
+  length field, checking whether they encode something about the
+  *boundary itself* (e.g. a running checksum seeded per-region, or a
+  per-region CRC) rather than the payload as a whole; (d) extending the
+  6-file smoothness/shuffle check to the remaining `PXD025121` and
+  `MTBLS14820` files for full corpus coverage (this session sampled a
+  representative subset, not every file, for the temporal-structure
+  table). `re/src/analysis/h2f2.py` and `run_h2f2_survey.py` are ready
+  reusable starting points for any of these.

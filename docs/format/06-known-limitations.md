@@ -287,7 +287,7 @@ integer and escape-byte hypotheses (Sigilweaver/OpenSZRaw#2). This is UV
 detector / chromatogram data, not core MS spectra, so it does not block
 MS-level format parity.
 
-Seven same-day (2026-07-20) sessions of further clean-room analysis
+Eight same-day (2026-07-20) sessions of further clean-room analysis
 narrowed the problem considerably without decoding it. Confirmed: 2 of
 the 4 varying fields in the 112-byte `PDA 3D Raw Data/CheckSum` stream
 are exact `u32` byte sizes of the `3D Raw Data` and `Max Plot` streams
@@ -323,7 +323,25 @@ encodings and literal zlib/DEFLATE framing of the payload, all ruled out
 shuffled-byte control (80% of it survived byte-order scrambling) and
 cross-file testing (collapsed on two sibling files), and the DEFLATE
 framing's small hit rate proved statistically indistinguishable from
-both a random-byte and a shuffled-byte control. See
-`docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-7 for
-full detail. None of this decodes the per-value payload; that grammar
-is still open.
+both a random-byte and a shuffled-byte control. An eighth session found
+and named two previously-unexamined `u16` fields inside the split
+envelope's header/footer overhead (H2/F2, sitting outside the
+already-accounted region-`A`/region-`tail` byte ranges): both carry
+real per-timepoint temporal structure whose lag-1 autocorrelation
+(0.32-0.90 on 6 independent files) collapses to noise under a
+segment-order-shuffle control - a materially cleaner positive control
+than any prior session produced - and H2 is additionally a hard,
+corpus-wide, instrument-family-conditional constant (zero on all 31
+IT-TOF split-form files checked, real content on all 11 QTOF
+split-form files checked), a second instrument-correlated structural
+fact nested inside the split form beyond the already-known split-vs-
+symmetric envelope choice. No exact-match formula (neighbor-segment
+fields, region byte statistics, cross-field correlation, a
+modulo-65536 unwrap-and-linear-fit) was found for either field. The
+same session also closed off MS-Numpress's other two sub-schemes as
+new search space: Pic shares Lin's already-ruled-out nibble framing
+exactly, and Slof's fixed-16-bit-per-value width was re-checked at the
+split form's region granularity (not just whole-body) and found
+equally absent. See `docs/format/04-lcd-chromatogram-pda.md`'s
+2026-07-20 sessions 1-8 for full detail. None of this decodes the
+per-value payload; that grammar is still open.

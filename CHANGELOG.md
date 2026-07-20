@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Further PDA/chromatogram payload investigation
-  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): seven same-day
+  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): eight same-day
   sessions of clean-room analysis. Confirmed findings: 2 of the 4
   varying `PDA 3D Raw Data/CheckSum` fields are exact stream byte sizes
   (correcting an earlier "flat vs. real flag" reading), and the
@@ -44,14 +44,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the payload - the one nonzero hit rate found (a nibble scheme on one
   file) was disqualified by a shuffled-byte control and cross-file
   testing, and DEFLATE's small hit rate proved statistically
-  indistinguishable from random-byte and shuffled-byte controls. Along
-  the way, quantified a ~48% false-positive base rate for this
-  document's zero-leftover acceptance test and fixed a real gap in the
-  physical-plausibility check itself (mode-dominated/low-diversity
-  decodes can look deceptively "smooth" under mean relative step
-  alone). The per-point payload grammar itself is still undecoded - see
-  `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-7 for
-  full detail.
+  indistinguishable from random-byte and shuffled-byte controls; and
+  (session 8) the remaining two MS-Numpress sub-schemes (Pic shares
+  Lin's already-ruled-out framing; Slof's fixed-16-bit width was
+  additionally checked at the split form's region granularity, not just
+  whole-body). Along the way, quantified a ~48% false-positive base rate
+  for this document's zero-leftover acceptance test and fixed a real gap
+  in the physical-plausibility check itself (mode-dominated/low-diversity
+  decodes can look deceptively "smooth" under mean relative step alone).
+  Session 8 also found and characterized two previously-unexamined u16
+  fields in the split envelope's header/footer overhead (H2/F2): both
+  show real, shuffle-verified temporal autocorrelation (collapsing to
+  noise under a segment-order shuffle on 6 independent files), and H2 is
+  additionally a hard, corpus-wide, instrument-family-conditional
+  constant (zero on all 31 IT-TOF split-form files, real content on all
+  11 QTOF split-form files) - but no formula or numeric identity was
+  found for either field. The per-point payload grammar itself is still
+  undecoded - see `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20
+  sessions 1-8 for full detail.
 
 ## [0.1.0] - 2026-07-18
 
