@@ -142,6 +142,52 @@ is a scannable summary, not a substitute for the detailed sections below
   values wander across nearly the full `u16` range repeatedly within a
   single run, atypical of a directly-plotted physical trace. See
   2026-07-20 session 8.
+- **Conditioning the still-undecoded `region_a` payload's own byte
+  statistics on H2's value (used as context, not as a decode target)
+  finds a real but small, cross-file-reproduced, smooth association -
+  not a sharp mode switch.** Using H2's already-established
+  instrument-family-conditional content (previous bullet) as a
+  conditioning variable rather than trying to decode it directly: binning
+  real-mode segments by H2 quartile and comparing `region_a`'s pooled
+  byte-value distribution between the lowest and highest quartile clears
+  a label-shuffle randomized-control test (`p=0.0000` against a 300-shuffle
+  null) on all 3 independent QTOF files checked, and is not explained by
+  H2 tracking overall signal magnitude (`r(H2, a_len)` and `r(H2,
+  mean(region_a byte))` are weak and inconsistent in sign across files).
+  But a per-decile breakdown shows only a gentle, non-monotonic drift
+  (entropy spread `0.08` bits, mean length spread `~4%` across the full
+  H2 range) with no sharp threshold - too weak and too smooth to expose a
+  token-boundary rule. See 2026-07-20 session 9.
+- **Instrument-family byte-statistics comparison argues against, not
+  for, "two conflated payload grammars."** A file-level permutation test
+  (8 IT-TOF vs. 8 QTOF split-form files) finds a real, non-chance
+  instrument-family effect on pooled byte-value statistics in *both*
+  `region_a` (`p=0.0000`) and `region_tail[2:]` (`p=0.0000`) - but since
+  region A also clears this test, not just region tail, this is better
+  explained by IT-TOF and QTOF instruments simply measuring different
+  real signals under one shared, magnitude-driven grammar (consistent
+  with this document's existing "width is signal-magnitude-driven"
+  conclusion) than by a region-specific second grammar. Every family/file
+  checked stays dominated by the same two leader bytes (`0x3f`, `0x20`)
+  in both regions, a structural signature "same grammar, different real
+  input" predicts and "two different grammars" would not obviously
+  predict. See 2026-07-20 session 9.
+- **Literal arithmetic/range coding of the payload's raw bytes is ruled
+  out by the payload's own entropy signature.** A well-functioning
+  byte-oriented entropy coder's output should be close to uniformly
+  distributed (entropy near the 8-bit/byte ceiling) and close to
+  independent byte-to-byte; the real payload measures `21.5%` below that
+  ceiling with a `13.7%` conditional-entropy reduction from one byte of
+  context (split form, `MSV000084197` `region_a`) and, more starkly,
+  `10.6%` below ceiling with a **45.6%** conditional-entropy reduction
+  (symmetric form, `MTBLS432` whole body) - the opposite of what
+  compressed/entropy-coded output looks like, and consistent with this
+  document's other independent evidence of real recoverable structure
+  (conditional entropy, cross-segment compression, H2/F2
+  autocorrelation). Rules out the payload's raw bytes being literal
+  general-purpose arithmetic/range-coder output; does not rule out such a
+  stage existing further upstream in the production pipeline. See
+  2026-07-20 session 9.
 
 **Ruled out** (see "This session's additional ruled-out hypotheses" and
 "further ruled-out hypotheses" for full detail): standard unsigned
@@ -210,7 +256,16 @@ the existing fp16 check already used, finding the same negligible
 and every exact-match formula tried against the split form's two
 newly-identified H2/F2 envelope fields (neighbor-segment length fields,
 region byte sums/XOR/boundary values, cross-field lag correlation, a
-modulo-65536 unwrap-and-linear-fit) - see 2026-07-20 session 8.
+modulo-65536 unwrap-and-linear-fit) - see 2026-07-20 session 8; the
+"two conflated payload grammars, split by instrument family" reading of
+the split form (a file-level permutation test finds a real family effect
+in both `region_a` and `region_tail[2:]`, not just one, which fits a
+shared magnitude-driven grammar fed different real per-family signals
+better than two distinct grammars) and literal arithmetic/range coding of
+the payload's raw bytes (ruled out by the payload's own marginal and
+conditional entropy falling well short of, and in the wrong direction
+from, what real entropy-coder output looks like) - see 2026-07-20
+session 9.
 
 **Genuinely open:**
 - The exact per-value token grammar (width-selection rule and numeric
@@ -230,7 +285,11 @@ modulo-65536 unwrap-and-linear-fit) - see 2026-07-20 session 8.
   content-dependent, and shuffle-verified-temporal, with H2 additionally
   confirmed as a hard instrument-family-conditional constant/non-constant
   split, but no formula or numeric identity found for either. See
-  2026-07-20 session 8.
+  2026-07-20 session 8. A weak, cross-file-reproduced association between
+  H2's value and `region_a`'s own byte statistics was found this session
+  (permutation-verified, not a magnitude-tracking artifact) but is too
+  small and smooth to identify H2 itself or expose a mode switch in the
+  payload grammar - see 2026-07-20 session 9.
 - Whether fp16 (binary16) numeric interpretation or spectral-domain
   (wavelength-to-wavelength) delta coding is the right *value*
   interpretation for a token, once a token-boundary rule is found -
@@ -2660,6 +2719,182 @@ unwrap-linear-fit checks and the Slof region-length check were ad hoc
 since each was a single bounded query with no reusable abstraction
 needed beyond `h2f2.py`'s row extraction).
 
+## 2026-07-20 session 9: instrument-family byte-statistics comparison and H2-as-context conditioning, both rigorously tested with file-level/label-shuffle permutation controls; a decisive entropy-based rejection of literal arithmetic/range coding
+
+Three genuinely new angles this session, none tried in any prior pass:
+whether IT-TOF vs QTOF instrument family (already known from session 8 to
+affect H2) also shows up as a different byte-statistics *profile* in the
+still-undecoded `region_a`/`region_tail` payload itself (as opposed to
+just in the H2/F2 envelope fields session 8 examined); whether
+conditioning the payload's own byte statistics on H2's *value* (used as
+context, not as the decode target) reveals a mode switch in the payload
+grammar; and whether the payload could literally be arithmetic/range-coded
+output - a compression family structurally distinct from every
+fixed-token-boundary (byte- or nibble-granular) scheme sessions 1-8
+already swept. **No decode was found and the per-value payload grammar
+remains undecoded**, but all three threads produced genuine, honestly
+negative or inconclusive results, one of them (H2 conditioning)
+uncovering a small but real, cross-file-reproduced structural fact that
+had never been reported before. Every positive-looking number below was
+checked against a proper randomized control before being written down,
+per this document's established discipline.
+
+- **Instrument-family byte-statistics comparison: a real, permutation-
+  verified difference exists in BOTH regions, which argues *against*,
+  not for, the "two conflated grammars" theory.** Session 8 already
+  established H2 is instrument-family-conditional; this session asked
+  whether the still-undecoded payload bytes themselves also differ by
+  family. Pooled `region_a` and `region_tail[2:]` (tail with the two
+  known edge-channel positions, session 3's channel 0/1, stripped) byte-
+  value histograms were compared between 8 IT-TOF (`PXD025121`) and 8
+  QTOF (`MSV000084197` + 7 `MTBLS14820`) split-form files using
+  Jensen-Shannon divergence, tested with a **file-level** (not
+  byte-level) permutation test - individual bytes within one file are
+  not independent samples, so treating them as the exchangeable unit
+  would trivially inflate significance regardless of any real family
+  effect; the correct unit is the whole file, and every way of
+  re-splitting the 16 loaded files into two groups of 8 was compared
+  against the true IT-TOF-vs-QTOF split (2000 random re-splits).
+  **Region A**: true JS divergence `0.0211` bits vs. a null distribution
+  of `min=0.0002, median=0.0011, p95=0.0035, max=0.0106` - the true value
+  exceeds every one of 2000 random re-splits (`p=0.0000`). **Region
+  tail[2:]**: true JS divergence `0.0942` bits vs. null
+  `min=0.0001, median=0.0038, p95=0.0255, max=0.0561` - again `p=0.0000`,
+  and roughly 4.4x larger in absolute magnitude than region A's true
+  value. Both regions show a real, non-chance instrument-family effect -
+  but this cuts against, not for, a "region-specific second grammar"
+  reading: if region tail alone carried a distinct grammar while region A
+  used a shared one, region A should *not* also clear this permutation
+  test. Since both regions show a significant family effect, the far
+  simpler explanation already implicit in this document's own
+  "width-selection is signal-magnitude-driven" conclusion (the
+  external-table-hunt session) fits better: IT-TOF and QTOF instruments
+  measure genuinely different real chromatography/absorbance data, and a
+  *shared* magnitude-driven encoding naturally produces different byte
+  statistics when fed different real signals, with no need for two
+  distinct grammars. Consistent with this reading: every family/file
+  checked (this session and session 1) is dominated by the same two
+  leader bytes (`0x3f`, `0x20`) in both regions - a structural signature
+  that stays constant across families even while the exact frequencies
+  shift, which is what "same grammar, different real input" predicts and
+  "two different grammars" would not obviously predict. This closes off
+  the "different payload grammars have been conflated" reading of the
+  QTOF/IT-TOF split as a promising angle, at least at the level of gross
+  byte-value statistics - it does not rule out a shared grammar with
+  instrument-conditional *parameters* (which is exactly what H2 being
+  family-conditional already established at the envelope level).
+- **H2-as-context: a real, small, cross-file-reproduced, but smooth (not
+  mode-switch-shaped) association between H2 and `region_a`'s byte
+  statistics.** Rather than trying to decode H2 (session 8's approach,
+  exhausted), this session used H2's already-known *value* as a
+  conditioning variable on the still-undecoded payload: does binning
+  real-mode segments by H2 quartile change `region_a`/`region_tail[2:]`'s
+  byte-value distribution beyond what a randomized control would produce?
+  Tested on 3 independent QTOF files (`MSV000084197`, plus 2
+  `MTBLS14820` files) with a label-shuffle control - shuffling H2 *values*
+  across segments (breaking the H2-to-payload coupling while preserving
+  each segment's own payload bytes and H2's marginal distribution) to
+  build a null distribution for the same lowest-quartile-vs-highest-
+  quartile JS divergence statistic (300 shuffles/file). First ruled out
+  the obvious confound - H2 tracking overall signal magnitude, which
+  would make any downstream correlation uninteresting (already expected
+  from the existing "width is magnitude-driven" finding, not a new
+  discovery): Pearson `r(H2, a_len)` is `0.069`, `0.091`, `-0.135` across
+  the three files, and `r(H2, mean(region_a byte))` is `-0.001`, `0.025`,
+  `-0.199` - weak, and inconsistent in *sign* across files, ruling out
+  "H2 is just a magnitude proxy" as the explanation for any effect found.
+  **Result**: `region_a`'s Q1-vs-Q4 JS divergence clears its label-
+  shuffled null on all 3 files (`0.00213` bits vs. null max `0.00030`,
+  `p=0.0000`; `0.00503` vs. null max `0.00145`, `p=0.0000`; `0.00679` vs.
+  null max `0.00162`, `p=0.0000`) - real, reproducible signal, not
+  chance. `region_tail[2:]` clears the same test on 2 of 3 files (both
+  `MTBLS14820` files, `p=0.0000` each) but not on `MSV000084197`
+  (`0.00098` vs. null max `0.00114`, `p=0.1567`, not significant) - a
+  genuine cross-file inconsistency worth stating plainly rather than
+  cherry-picking the two files that clear it. **But the effect, where
+  real, is small and smooth, not a mode switch.** A per-H2-rank-decile
+  breakdown of `MSV000084197`'s `region_a` (entropy, mean length, leader-
+  byte fractions) shows only a gentle, non-monotonic drift - entropy
+  ranges `6.234`-`6.317` bits (a `0.08`-bit spread across the full H2
+  range), mean `a_len` ranges `476`-`496` bytes (a `~4%` spread), with the
+  middle H2 deciles mildly higher on both and the two tail deciles mildly
+  lower - not a sharp discontinuity at any threshold, the shape a real
+  "mode switch in the grammar" hypothesis would predict. **Verdict**: H2
+  is genuinely, weakly, non-linearly associated with `region_a`'s payload
+  byte statistics in a way three independent files' worth of randomized-
+  control testing supports - a real, newly-documented structural fact,
+  reported honestly as small and inconclusive rather than oversold - but
+  it is far too weak and too smooth to expose a token-boundary rule on
+  its own, and does not reveal the sharp mode-switch a future session
+  might have hoped to find by conditioning on it.
+- **A decisive, entropy-based rejection of literal arithmetic/range
+  coding as the payload's raw-byte framing.** Arithmetic and range coding
+  are structurally distinct from every fixed-token-boundary scheme this
+  document has tried (byte-granular continuation-bit/threshold sweeps,
+  MS-Numpress's nibble-granular varints) - a well-functioning byte-
+  oriented entropy coder's entire purpose is to squeeze out first-order
+  statistical structure, so its *output* bytes should look close to
+  uniformly distributed (marginal entropy near the 8-bit/byte ceiling)
+  and close to independent (near-zero reduction from conditioning on the
+  previous byte) regardless of how structured the *input* was. This
+  session quantified, and reverified directly against the corpus (not
+  just cited from session 1's earlier, less precisely stated numbers),
+  exactly how far short of that signature the real payload falls:
+  `MSV000084197`'s `region_a` real-mode bytes measure `H(byte) = 6.281`
+  bits (`21.5%` below the 8-bit ceiling, reproducing session 1's `6.279`
+  almost exactly) with `H(next|current) = 5.417` (a `13.7%` reduction
+  from one byte of context) and a single byte value (`0x3f`) at `17.3%`
+  frequency versus a `0.4%` uniform expectation; `MTBLS432`'s whole body
+  (symmetric form, not previously measured this precisely at the
+  whole-body level) measures `H(byte) = 7.155` bits (`10.6%` below
+  ceiling, less skewed at the marginal level than the split form) but
+  `H(next|current) = 3.890` - a **45.6%** conditional-entropy reduction,
+  a substantially larger first-order-redundancy signature than the split
+  form's. Both figures are the opposite of what a working entropy coder's
+  output looks like: real compressed/entropy-coded byte streams do not
+  have a single value at 40-50x its uniform-chance frequency, nor do they
+  leave 14-46% of their own entropy recoverable from one byte of local
+  context - both are hallmarks of *un*-entropy-coded, still-structured
+  data, exactly consistent with this document's other independent
+  evidence of genuine recoverable local and cross-segment structure (the
+  conditional-entropy and compression-ratio findings from the 2026-07-19
+  entropy session, session 8's H2/F2 autocorrelation). **This is not
+  proof no arithmetic/range stage exists anywhere in the file's actual
+  production pipeline** (a coder operating on some upstream, not-yet-
+  identified transform of the values, whose *output* is then further
+  packed with the still-visible structure documented elsewhere in this
+  document, cannot be excluded by this test alone) **but it is decisive
+  evidence against the payload's raw bytes, exactly as observed on disk,
+  being literal general-purpose arithmetic/range-coder output
+  themselves** - ruling out the most literal reading of that idea cheaply,
+  without needing to implement or sweep an actual arithmetic/range
+  decoder.
+
+**Verdict**: three angles genuinely distinct from anything sessions 1-8
+tried, all executed to completion with proper randomized controls rather
+than reported on a partial or uncontrolled signal. Two are clean negative
+results (family byte-statistics profile argues against, not for, a
+region-specific second grammar; literal arithmetic/range coding is ruled
+out by the payload's own entropy signature). One (H2-as-context) is a
+genuine positive finding - small, cross-file-reproduced, and honestly
+reported as too weak and too smooth to be a mode switch - rather than
+being force-fit into a larger claim than the evidence supports. The
+per-value payload grammar remains undecoded after nine same-day sessions.
+The strongest remaining leads are unchanged from session 8's list below:
+manual nibble-level inspection of region `tail` channels 2+ (still
+untried), and identifying what H2/F2 numerically encode (this session
+adds one more data point - H2 is not simply an overall-magnitude proxy -
+without resolving what it actually is).
+
+Scripts (new this session, under `re/src/analysis/`, gitignored):
+`family_byte_stats.py` (`region_bytes_counter`/`js_divergence`/
+`permutation_test`, the file-level permutation-test infrastructure for
+the instrument-family comparison), `h2_context.py`
+(`load_real_split_rows`/`h2_quartile_js`/`h2_decile_profile`, built on
+`h2f2.py`'s `h2f2_rows` from session 8 rather than re-deriving H2/F2
+extraction), and `arith_coding_check.py` (`marginal_entropy`/
+`conditional_entropy`, reusing `common.py`'s envelope/region extraction).
+
 ## LC Raw Data - a different, unrelated chromatogram stream
 
 While looking for real `LSS Raw Data` chromatogram content (all empty in
@@ -2926,3 +3161,20 @@ leads, not findings:
   representative subset, not every file, for the temporal-structure
   table). `re/src/analysis/h2f2.py` and `run_h2f2_survey.py` are ready
   reusable starting points for any of these.
+- **(New, from 2026-07-20 session 9) H2-as-context found a real but weak,
+  smooth association with `region_a`'s byte statistics - not strong
+  enough to identify H2, but worth extending.** Session 9 conditioned
+  `region_a`/`region_tail[2:]`'s byte-value distribution on H2's rank
+  quartile (label-shuffle-control-verified on 3 QTOF files) and found a
+  real, reproducible but small effect (JS divergence 3-40x the
+  label-shuffled null, but only `0.002`-`0.007` bits in absolute terms,
+  and a smooth, non-monotonic per-decile trend rather than a sharp
+  threshold). Not yet tried: extending this to F2 and to `region_tail`
+  positions 0/1 specifically (the two channels already confirmed as plain
+  literal/hardwired, which could sanity-check whether H2 conditioning
+  moves a *known*-meaning channel in an interpretable way, as a stepping
+  stone toward understanding H2 itself); trying finer-grained conditioning
+  (more than 4 bins, or 2-D binning against both H2 and F2 jointly) now
+  that `h2_context.py`'s permutation-test infrastructure exists to check
+  significance properly at finer granularity without re-deriving it.
+  `re/src/analysis/h2_context.py` is a ready reusable starting point.

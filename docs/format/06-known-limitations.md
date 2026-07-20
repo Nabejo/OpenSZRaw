@@ -287,7 +287,7 @@ integer and escape-byte hypotheses (Sigilweaver/OpenSZRaw#2). This is UV
 detector / chromatogram data, not core MS spectra, so it does not block
 MS-level format parity.
 
-Eight same-day (2026-07-20) sessions of further clean-room analysis
+Nine same-day (2026-07-20) sessions of further clean-room analysis
 narrowed the problem considerably without decoding it. Confirmed: 2 of
 the 4 varying fields in the 112-byte `PDA 3D Raw Data/CheckSum` stream
 are exact `u32` byte sizes of the `3D Raw Data` and `Max Plot` streams
@@ -342,6 +342,23 @@ same session also closed off MS-Numpress's other two sub-schemes as
 new search space: Pic shares Lin's already-ruled-out nibble framing
 exactly, and Slof's fixed-16-bit-per-value width was re-checked at the
 split form's region granularity (not just whole-body) and found
-equally absent. See `docs/format/04-lcd-chromatogram-pda.md`'s
-2026-07-20 sessions 1-8 for full detail. None of this decodes the
-per-value payload; that grammar is still open.
+equally absent. A ninth session tried three angles distinct from
+sessions 1-8's fixed-token-boundary sweeps: whether IT-TOF vs. QTOF
+instrument family (already known from session 8 to affect H2) also shows
+up as a different payload byte-statistics profile - a file-level
+permutation test found a real family effect, but in *both*
+`region_a` and `region_tail`, which argues against (not for) a
+region-specific second grammar and fits a single shared, magnitude-driven
+grammar fed different real per-instrument signals instead; using H2's
+value as *context* for the payload's own byte statistics rather than as
+a decode target, which found a real but small, cross-file-reproduced,
+smooth (non-mode-switch-shaped) association, verified against a
+label-shuffle randomized control on three independent files; and a
+decisive entropy-based rejection of literal arithmetic/range coding as
+the payload's raw-byte framing (real compressed/entropy-coded streams
+look close to uniform and independent at the byte level; this payload's
+bytes are 10-22% short of that and show 14-46% conditional-entropy
+reduction from one byte of context, the opposite signature). See
+`docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-9 for
+full detail. None of this decodes the per-value payload; that grammar is
+still open.

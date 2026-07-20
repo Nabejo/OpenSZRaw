@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Further PDA/chromatogram payload investigation
-  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): eight same-day
+  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): nine same-day
   sessions of clean-room analysis. Confirmed findings: 2 of the 4
   varying `PDA 3D Raw Data/CheckSum` fields are exact stream byte sizes
   (correcting an earlier "flat vs. real flag" reading), and the
@@ -59,9 +59,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   additionally a hard, corpus-wide, instrument-family-conditional
   constant (zero on all 31 IT-TOF split-form files, real content on all
   11 QTOF split-form files) - but no formula or numeric identity was
-  found for either field. The per-point payload grammar itself is still
-  undecoded - see `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20
-  sessions 1-8 for full detail.
+  found for either field. Session 9 tried three angles distinct from
+  sessions 1-8's fixed-token-boundary sweeps: an instrument-family
+  byte-statistics comparison (a file-level permutation test finds a real
+  IT-TOF-vs-QTOF effect in both payload regions, arguing against a
+  region-specific second grammar rather than for one); using H2's value
+  as context for the still-undecoded payload's own byte statistics rather
+  than as a decode target (a real but small, cross-file-reproduced,
+  smooth - not mode-switch-shaped - association, verified against a
+  label-shuffle control); and a decisive entropy-based rejection of
+  literal arithmetic/range coding as the payload's raw-byte framing. The
+  per-point payload grammar itself is still undecoded - see
+  `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-9 for
+  full detail.
 
 ## [0.1.0] - 2026-07-18
 
