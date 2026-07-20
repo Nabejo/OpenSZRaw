@@ -287,7 +287,7 @@ integer and escape-byte hypotheses (Sigilweaver/OpenSZRaw#2). This is UV
 detector / chromatogram data, not core MS spectra, so it does not block
 MS-level format parity.
 
-Nine same-day (2026-07-20) sessions of further clean-room analysis
+Ten same-day (2026-07-20) sessions of further clean-room analysis
 narrowed the problem considerably without decoding it. Confirmed: 2 of
 the 4 varying fields in the 112-byte `PDA 3D Raw Data/CheckSum` stream
 are exact `u32` byte sizes of the `3D Raw Data` and `Max Plot` streams
@@ -358,7 +358,17 @@ decisive entropy-based rejection of literal arithmetic/range coding as
 the payload's raw-byte framing (real compressed/entropy-coded streams
 look close to uniform and independent at the byte level; this payload's
 bytes are 10-22% short of that and show 14-46% conditional-entropy
-reduction from one byte of context, the opposite signature). See
-`docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-9 for
-full detail. None of this decodes the per-value payload; that grammar is
-still open.
+reduction from one byte of context, the opposite signature). A tenth
+session decoded `Wavelength Table`'s actual per-channel content for the
+first time (a near-perfectly linear nm ramp against channel index,
+`R^2 > 0.99999`), closing a loose end flagged since the first session
+with a clean negative (it adds no information beyond plain channel
+index); it also attempted the literal 3-segment joint temporal+magnitude
+decoder session 5 had flagged as the next concrete step, found it
+computationally intractable in Python (state space grows cubically,
+confirmed by direct measurement), and built a tractable pairwise-chaining
+proxy instead - which found a real width-agreement signal on one file
+(`p=0.0100`) that did not reproduce on a second, cross-file check
+(`p=0.8335`). See `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20
+sessions 1-10 for full detail. None of this decodes the per-value
+payload; that grammar is still open.

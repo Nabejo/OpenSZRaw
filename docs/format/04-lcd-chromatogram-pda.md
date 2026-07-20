@@ -188,6 +188,31 @@ is a scannable summary, not a substitute for the detailed sections below
   general-purpose arithmetic/range-coder output; does not rule out such a
   stage existing further upstream in the production pipeline. See
   2026-07-20 session 9.
+- **`PDA 3D Raw Data/Wavelength Table`'s per-channel content is now fully
+  decoded (a leading `u32` count plus `npts` more `u32` values, each
+  `nm * 100`), and it is a near-perfectly linear ramp against channel
+  index (`R^2 > 0.99999` in all three files checked)** - closing a loose
+  end flagged since this document's first session ("cross-referencing
+  decoded region lengths against the actual `Wavelength Table` contents,
+  not just its leading count field"). Because the table is affine in
+  channel index to within rounding noise, it carries no discriminating
+  information for width-selection search beyond plain channel index,
+  which sessions 1-9 already used extensively - a clean negative
+  closure, not a new open search direction. See 2026-07-20 session 10.
+- **A joint-decode "chain consistency" test (segment `i`'s per-channel
+  width, decoded independently against its true left and true right
+  neighbor) finds a real but file-inconsistent signal.** True-neighbor
+  agreement beats a randomized-partner control at `p=0.0100` (paired
+  permutation test, 16 anchors) on `MSV000084197` (QTOF), but shows no
+  effect at all (`p=0.8335`, sign test exactly at chance) on
+  `PXD025121/1.lcd` (IT-TOF) under the identical method. The literal
+  3-segment lockstep joint DP this test approximates (recommended as the
+  most concrete unblocked next step by 2026-07-20 session 5) was
+  attempted directly first and found computationally intractable in
+  this Python implementation - its reachable-state frontier grows as a
+  near-perfect cube of channel index and plateaus around 132,000 states
+  per depth even for the corpus's smallest region-tail target. See
+  2026-07-20 session 10.
 
 **Ruled out** (see "This session's additional ruled-out hypotheses" and
 "further ruled-out hypotheses" for full detail): standard unsigned
@@ -265,7 +290,13 @@ better than two distinct grammars) and literal arithmetic/range coding of
 the payload's raw bytes (ruled out by the payload's own marginal and
 conditional entropy falling well short of, and in the wrong direction
 from, what real entropy-coder output looks like) - see 2026-07-20
-session 9.
+session 9; cross-referencing `Wavelength Table`'s actual per-channel nm
+values against width-selection search (the table is affine in channel
+index to within rounding noise, so it adds no information beyond plain
+channel index) and a literal 3-segment lockstep joint-decode DP (its
+state space grows cubically and is computationally intractable in this
+Python implementation even for the corpus's smallest region-tail target)
+- see 2026-07-20 session 10.
 
 **Genuinely open:**
 - The exact per-value token grammar (width-selection rule and numeric
@@ -2895,6 +2926,202 @@ the instrument-family comparison), `h2_context.py`
 extraction), and `arith_coding_check.py` (`marginal_entropy`/
 `conditional_entropy`, reusing `common.py`'s envelope/region extraction).
 
+## 2026-07-20 session 10: `Wavelength Table` cross-referenced for the first time (a clean, informative negative), and a 3-segment joint-decode "chain consistency" test that reproduces on one file but not a second
+
+Two angles this session, both genuinely new (neither tried in sessions
+1-9), picked after re-reading this document's own "further avenues" and
+each prior session's closing recommendations rather than repeating an
+already-covered idea. **No decode was found; the per-value payload
+grammar remains undecoded after ten same-day sessions.** One thread
+closes a loose end this document has carried, unactioned, since its very
+first ruled-out-hypotheses section; the other directly executes the
+single most concrete unblocked next step session 5 left open, gets a
+real (if modest) result on it, and is honest that the result does not
+survive a second file.
+
+### `Wavelength Table`'s actual per-channel content, decoded for the first time: a near-perfectly linear nm ramp, not a per-channel selection/flag table
+
+The very first ruled-out-hypotheses section of this document (2026-07-19,
+"This session's additional ruled-out hypotheses") flagged, as "a
+promising next avenue for a future session," cross-referencing decoded
+region lengths against `PDA 3D Raw Data/Wavelength Table`'s *actual
+contents*, "not just its leading count field, which is all this session
+used." Every session since (including the external-table-hunt session,
+which confirmed the stream is byte-identical across files but did not
+decode what the bytes mean) used only the stream's leading `u32` count.
+This session finally decoded the rest of it.
+
+- **Structure**: `Wavelength Table` is a leading little-endian `u32`
+  count (`npts`, already known), followed by exactly `npts` more
+  little-endian `u32` values, followed by a 4-byte zero-padding tail
+  (present in the two files with one; the third, `MSV000084197`, has no
+  trailing padding at all - a stream-length quirk, not a content
+  difference). Verified this accounts for the stream's full declared
+  byte length exactly in all three files checked (`MTBLS432`: `4 + 68*4
+  + 4 = 280`, matches; `PXD025121`: `4 + 327*4 + 4 = 1316`, matches;
+  `MSV000084197`: `4 + 321*4 = 1288`, matches with no trailing pad).
+- **The `npts` `u32` values are wavelengths in hundredths of a nanometer**
+  (i.e. `nm * 100`, an ordinary fixed-point convention, not a novel one).
+  `MTBLS432`: channel 0 = `21960` = 219.60 nm, channel 67 = `30075` =
+  300.75 nm - a 68-channel PDA scan of roughly 220-300 nm.
+  `PXD025121`: channel 0 = `19931` = 199.31 nm, channel 326 = `60116` =
+  601.16 nm - a wider 327-channel scan spanning roughly 200-600 nm.
+  `MSV000084197`: channel 0 = `19878` = 198.78 nm, channel 320 = `60097`
+  = 600.97 nm - closely matching `PXD025121`'s range despite the
+  different instrument family, both spanning close to the same
+  200-600 nm window at similar channel density (`~1.24-1.26 nm/channel`
+  in the split-form files vs. `~1.21 nm/channel` in the smaller
+  symmetric-form file).
+- **The per-channel values form a near-perfectly linear ramp against
+  channel index, not a non-uniform selection or flag table**: a
+  least-squares linear fit of `wavelength_hundredths` against channel
+  index gives `R^2 = 0.999998-0.9999975` in all three files (essentially
+  a perfect line), with the largest single-channel residual `113.93`
+  (`MSV000084197`) out of a `~40,000`-unit range - about `0.28%` of the
+  span, consistent with simple integer-hundredths-of-a-nm rounding of an
+  idealized evenly-spaced grid, not a structural anomaly. Per-step
+  differences between adjacent channels stay within a narrow `+/-2-3`
+  band around each file's own mean step (`120-122` for `MTBLS432`,
+  `120-125` for `PXD025121`, `123-127` for `MSV000084197`) with no
+  outlier gaps, jumps, or repeated/omitted channels anywhere in any of
+  the three tables.
+- **Why this closes the avenue as a negative, rather than opening new
+  search space**: the originally-hoped-for use of this data was to see
+  whether the `A`/`tail` 256-channel split (or any other observed
+  width-selection boundary) "lines up with a real wavelength sub-range
+  boundary... rather than being an encoding-internal detail." Since the
+  table is a simple affine function of channel index (to within rounding
+  noise), a real physical wavelength value carries **no discriminating
+  information beyond the channel index itself** for any future
+  width-selection search - correlating candidate decode widths against
+  real nm values would be equivalent, up to a linear rescaling, to
+  correlating them against plain channel index, which sessions 1-9
+  already did extensively (the "low-variance early wavelength" entropy
+  finding, region tail's channel-0/1 edge behavior, etc.). This is a
+  clean, now-executed answer to a question this document had left open
+  since its first day, not a repeat of prior channel-index-based work -
+  it just turns out the answer is "no new information," closing rather
+  than opening a search direction.
+
+### Joint-decode chain-consistency test: the session-5-recommended 3+-segment extension, attempted directly, found computationally intractable as a true lockstep DP, then approximated with a tractable pairwise-chaining proxy - real signal on one file, none on a second
+
+Session 5's own closing "what's left" list named, as its first and most
+concrete unblocked item, extending the pairwise joint temporal+magnitude
+decoder (2026-07-19; re-scoped to correct per-region targets and tested
+with an (ultimately unhelpful) anti-mode-collapse term in session 5) to a
+**chain of three or more segments**, reasoning that "a spuriously
+low-cost alignment is far less likely to remain low-cost simultaneously
+against two neighbors than against just one." This had not been executed
+by any session through session 9. This session executed it, in two
+stages.
+
+- **Stage 1 - the literal 3-segment lockstep DP, attempted directly
+  (`re/src/analysis/joint_dp3.py`): confirmed computationally
+  intractable in this (Python, dict-based) implementation, with concrete
+  numbers rather than the prior session's assumption alone.** Extending
+  the pairwise DP's state representation from `(bytes_consumed_a,
+  bytes_consumed_b)` to `(bytes_consumed_a, bytes_consumed_b,
+  bytes_consumed_c)` makes the reachable-state frontier grow with the
+  *product* of three segments' reachable byte-offset windows instead of
+  two. A bare state-counting pass (same feasibility pruning as the
+  working pairwise DP, no cost tracking) against the smallest
+  region-tail target in the corpus (`MSV000084197`, `n_channels=65`)
+  shows the frontier growing as a near-perfect cube of the channel index
+  (`64, 343, 1000, 2197, ...` - matching `(4+3i)^3` almost exactly) before
+  plateauing around **132,000 states per depth**, and had not completed
+  even a bare 65-step count within 46 seconds, let alone the added cost
+  of decoding, comparing, and backtracking through every state at that
+  width once real cost tracking is added (the full cost-tracking version
+  did not converge within a 2,000,000-state / 90-second budget on the
+  same triple). This is now a directly measured, not merely assumed,
+  confirmation of session 5's "would need a faster/non-Python
+  implementation first" caveat - not fatal to the idea, but genuinely out
+  of reach for a same-day Python session, consistent with the explicit
+  budget constraints every session in this document has operated under.
+- **Stage 2 - a tractable proxy that keeps the "agreement against two
+  neighbors" spirit without the cubic blowup (`re/src/analysis/
+  joint_dp_chain.py`): solve the *pairwise* DP twice** - once for
+  `(segment i-1, segment i)` and once for `(segment i, segment i+1)` -
+  and check whether segment `i`'s own per-channel width assignment,
+  decoded twice independently (once against each neighbor), **agrees
+  with itself**. A real, unique width-selection rule should produce the
+  same width for segment `i`'s channel `k` regardless of which neighbor
+  it's compared against; the degenerate-solution-space problem session
+  5 diagnosed (many structurally different alignments tie on cost)
+  predicts these two independent solves will *not* agree well, since
+  nothing in the pairwise cost function forces the shared segment's
+  assignment to be internally consistent. This pairwise DP was also
+  re-derived with a genuinely tighter, still-exact prune (using the
+  *shared* known channel count `n_channels` to bound both segments'
+  remaining-byte windows jointly, not each independently, which the
+  prior sessions' implementations did not do), bringing a single
+  region-tail pairwise solve for `MSV000084197` (`n_channels=65`) down to
+  about 1 second.
+  - **`MSV000084197` (QTOF, `n_channels=65`, 16 usable anchor points
+    spread across the stream's real-mode range): true-neighbor agreement
+    is higher than a randomized control, at borderline-but-real
+    significance.** Mean per-channel width agreement (segment `i`
+    decoded against its true left neighbor vs. against its true right
+    neighbor) is **0.4356**, versus **0.3933** when `i` is instead paired
+    with two randomly chosen non-adjacent real segments (same anchor
+    `i`, same DP, same pruning - the only difference is which two
+    partners it's solved against). True agreement exceeds the random
+    control in 11 of 16 anchors (a sign test, mirroring session 5's own
+    methodology). A paired sign-flip permutation test on the mean
+    agreement difference (2000 shuffles) gives **p=0.0100** - a real,
+    if modest, effect, in the same direction and rough magnitude class as
+    session 5's own re-tested pairwise finding (`~1.13x` cost ratio,
+    60% sign-test rate).
+  - **`PXD025121/1.lcd` (IT-TOF, `n_channels=71`, 16 usable anchors,
+    same method, cross-file check): no effect at all.** Mean agreement
+    is **0.5211** true vs. **0.5167** random - a difference of `0.0044`,
+    well within noise. The sign test is **8 of 16** (exactly the chance
+    rate), and the same permutation test gives **p=0.8335**, nowhere
+    close to significant.
+  - **Interpretation**: this is an honest, cross-file-*inconsistent*
+    result, not a confirmed finding - exactly the kind of single-file
+    signal this document's own established discipline (session 2's
+    quantified false-positive base rate; session 4's mode-fraction and
+    diversity-artifact lessons; session 9's family-effect and H2-context
+    work) says must be checked against at least one more file before it
+    can be trusted, and it does not survive that check here. It does not
+    contradict the existing, more-cautiously-worded "weak, aggregate-level
+    signal, not reliable pair-by-pair" characterization of the underlying
+    temporal-correlation effect (session 5) - if anything it sharpens it
+    further, since this session's specific refinement (agreement against
+    *two* neighbors, the concrete next step session 5's own notes
+    recommended) does not generalize even to a second file of a different
+    instrument family, the same family/dataset confound this document has
+    flagged elsewhere (session 8's H2 finding, session 9's family
+    byte-statistics comparison) as a standing corpus limitation. Note the
+    baseline (random-pair) agreement rate itself is well above the
+    `1/4=0.25` a uniform 4-way width choice would predict (`0.39`-`0.52`
+    in both files) - expected, since this document already knows
+    region-tail widths are not uniformly distributed across `{1,2,3,4}`
+    (average width is `~1.6`-`2.2` bytes/channel) - which is why a proper
+    randomized control, not a naive `0.25` chance baseline, was essential
+    to interpret either file's number correctly.
+
+**Verdict**: neither thread produced a decode. The `Wavelength Table`
+thread is a clean, now-executed closure of a long-open loose end with an
+informative (if negative) answer. The joint-decode chain-consistency
+thread directly executed session 5's own most-concrete recommended next
+step, found it genuinely intractable as a literal 3-way DP (now measured,
+not assumed), built a tractable proxy for the same idea, and found a
+real-but-file-inconsistent signal - useful for calibrating how much
+weight this document's temporal-correlation finding should carry, but not
+itself a step toward a working decoder. The per-value payload grammar for
+both envelope forms remains undecoded.
+
+Scripts (new this session, under `re/src/analysis/`, gitignored):
+`joint_dp3.py` (the literal 3-segment lockstep DP - kept for reference
+despite not converging, since its state-growth diagnostic is itself the
+finding) and `joint_dp_chain.py` (`joint_dp_pair` - the re-derived,
+target-count-pruned pairwise DP - plus `run_file`, the chain-consistency
+sweep-and-permutation-test driver used for both files above). Both build
+directly on `common.py`'s `iter_segments`/`body_of`/`is_flat` rather than
+re-deriving envelope/region extraction.
+
 ## LC Raw Data - a different, unrelated chromatogram stream
 
 While looking for real `LSS Raw Data` chromatogram content (all empty in
@@ -2939,9 +3166,27 @@ segments and the flat-to-real transition segment, with no new testable
 hypothesis surfacing, though one reusable inspection technique
 (exact-`3*npts`-length segments as an algorithm-free token-grid anchor)
 came out of it. The region-`tail`-specific manual read described in the
-next bullet remains untried. The items below are additional,
-not-yet-tried directions - none executed this round, so treat them as
-leads, not findings:
+next bullet remains untried. **(Update, 2026-07-20 session 10)** The
+first of the three follow-ups (a faster/non-Python DP implementation) is
+now a *confirmed* prerequisite, not just a suspected one: session 10
+attempted the literal 3-segment lockstep joint DP directly and measured
+its state space growing as a near-perfect cube of channel index,
+plateauing around 132,000 states per depth even for the corpus's
+smallest region-tail target (`n_channels=65`) - a genuinely faster
+(vectorized/numpy or non-Python) implementation is now a measured, not
+assumed, requirement before a true 3+-segment joint decode is tractable
+in a same-day session. Session 10's tractable proxy for the same idea
+(agreement between two independent pairwise solves sharing a middle
+segment) found a real effect on one file (`MSV000084197`, `p=0.0100`)
+that did not reproduce on a second (`PXD025121/1.lcd`, `p=0.8335`) - see
+2026-07-20 session 10 for full detail; a future attempt at the *true*
+joint DP, once a fast-enough implementation exists, would be a
+materially different (and probably more decisive) test than this
+session's proxy, not a repeat of it. The run-length-based
+anti-collapse-penalty follow-up (the second of the three) remains
+untried. The items below are additional, not-yet-tried directions - none
+executed this round unless marked otherwise, so treat them as leads, not
+findings:
 
 - **(New, from 2026-07-20 session 3; followed up in session 4 with a
   negative result) Push the region-`tail` walk past channel index 2.**

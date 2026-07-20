@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Further PDA/chromatogram payload investigation
-  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): nine same-day
+  (Sigilweaver/OpenSZRaw#2, contributed by @Nabejo): ten same-day
   sessions of clean-room analysis. Confirmed findings: 2 of the 4
   varying `PDA 3D Raw Data/CheckSum` fields are exact stream byte sizes
   (correcting an earlier "flat vs. real flag" reading), and the
@@ -68,9 +68,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than as a decode target (a real but small, cross-file-reproduced,
   smooth - not mode-switch-shaped - association, verified against a
   label-shuffle control); and a decisive entropy-based rejection of
-  literal arithmetic/range coding as the payload's raw-byte framing. The
-  per-point payload grammar itself is still undecoded - see
-  `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-9 for
+  literal arithmetic/range coding as the payload's raw-byte framing.
+  Session 10 decoded `Wavelength Table`'s per-channel content for the
+  first time (a near-perfectly linear nm ramp against channel index,
+  closing a loose end open since session 1 with a clean negative - it
+  adds no width-selection information beyond plain channel index), then
+  attempted the literal 3-segment joint temporal+magnitude decoder
+  session 5 had flagged as the next concrete step (found computationally
+  intractable in Python - its state space grows cubically, confirmed by
+  direct measurement, not just assumed) and built a tractable pairwise-
+  chaining proxy instead, which found a real width-agreement signal on
+  one file (`p=0.0100`, permutation test) that did not reproduce on a
+  second, cross-file check (`p=0.8335`). The per-point payload grammar
+  itself is still undecoded - see
+  `docs/format/04-lcd-chromatogram-pda.md`'s 2026-07-20 sessions 1-10 for
   full detail.
 
 ## [0.1.0] - 2026-07-18
